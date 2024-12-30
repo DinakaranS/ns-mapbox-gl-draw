@@ -86,7 +86,6 @@
     border: 2px dotted #fff;
     opacity: 0.5;
 }
-
 .mui-text-field {
     border: 1px solid #c4c4c4;
     padding: 10px 15px;
@@ -98,15 +97,17 @@
 }
 
 .mui-text-field:focus {
-    border-color: #3f51b5;
+    border-color: #4264fb;
 }
 
 .mui-btn {
-    background-color: #3f51b5;
+    background-color: #4264fb;
     color: white;
     border: none;
     padding: 10px 15px;
-    border-radius: 4px;
+    -moz-border-radius-bottomright: 4px;
+    -moz-border-radius-topright: 4px;
+    border-radius: 0 4px 4px 0;
     cursor: pointer;
     text-transform: uppercase;
 }
