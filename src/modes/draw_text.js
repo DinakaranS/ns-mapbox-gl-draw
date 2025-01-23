@@ -28,50 +28,19 @@ function createFormContainer(map, lngLat) {
 
   const cancelButton = document.createElement("span");
   cancelButton.innerHTML = "&times;";
-  Object.assign(cancelButton.style, {
-    position: "absolute",
-    top: "2px",
-    right: "5px",
-    cursor: "pointer",
-    fontSize: "20px",
-    color: "black",
-  });
-  cancelButton.onclick = () => {
-    map.getContainer().removeChild(formContainer);
-  };
+  cancelButton.id = "cancel";
 
   const form = document.createElement("form");
   form.id = "text-input-form";
-  Object.assign(form.style, {
-    display: "flex",
-    alignItems: "center",
-  });
 
   const input = document.createElement("input");
   input.type = "text";
   input.id = "text-input";
   input.placeholder = "Enter text here";
-  Object.assign(input.style, {
-    padding: "10px", // Increase padding for larger height
-    marginRight: "0",
-    borderRadius: "3px",
-    border: "1px solid #ccc",
-    height: "15px", // Adjust height as needed
-    width: "60%",
-  });
 
   const button = document.createElement("button");
   button.type = "submit";
   button.innerText = "Submit";
-  Object.assign(button.style, {
-    borderRadius: "3px",
-    border: "none",
-    backgroundColor: "#007BFF",
-    color: "white",
-    cursor: "pointer",
-    height: "34px",
-    padding: "0 10px",
-  });
 
   form.appendChild(input);
   form.appendChild(button);
@@ -79,6 +48,13 @@ function createFormContainer(map, lngLat) {
   formContainer.appendChild(form);
 
   return formContainer;
+}
+
+function cancelInteraction(instance, formContainer) {
+  const mapContainer = instance.map.getContainer();
+  if (formContainer && mapContainer.contains(formContainer)) {
+    mapContainer.removeChild(formContainer);
+  }
 }
 
 function finalizeInteraction(instance, formContainer) {
@@ -113,18 +89,26 @@ const DrawText = {
   },
 
   onClick(state, e) {
-    if (!state.isInteractionAllowed) return;
+    // Make sure state is defined and interaction is allowed
+    if (!state || !state.isInteractionAllowed) return;
 
-    state.isInteractionAllowed = false;
+    state.isInteractionAllowed = false; // Disable interaction while the form is shown
     const map = this.map;
     this.updateUIClasses({ mouse: Constants.cursors.MOVE });
     currentPoint.updateCoordinate("", e.lngLat.lng, e.lngLat.lat);
 
+    // Check if the form container already exists, remove it if necessary
     const existingContainer = document.getElementById(FORM_CONTAINER_ID);
     if (existingContainer) existingContainer.remove();
 
+    // Create and append the new form container
     const formContainer = createFormContainer(map, e.lngLat);
     map.getContainer().appendChild(formContainer);
+
+    // Ensure this code runs after the button has been added to the DOM
+    formContainer.querySelector("#cancel").addEventListener("click", () => {
+      cancelInteraction(this, formContainer);
+    });
 
     formContainer.querySelector("form").onsubmit = (event) => {
       event.preventDefault();
@@ -140,7 +124,7 @@ const DrawText = {
   },
 
   onTap(state, e) {
-    this.onClick(state, e);
+    this.onClick(state, e); // Just call onClick for tap interaction
   },
 
   onKeyUp(state, e) {
@@ -149,12 +133,12 @@ const DrawText = {
     }
   },
 
-  stopDrawingAndRemove(state) {
+  stopDrawingAndRemove() {
     this.deleteFeature([currentPoint.id], { silent: true });
     this.changeMode(Constants.modes.SIMPLE_SELECT);
   },
 
-  onStop(state) {
+  onStop() {
     this.activateUIButton();
     if (!currentPoint.getCoordinate().length) {
       this.deleteFeature([currentPoint.id], { silent: true });
@@ -170,6 +154,7 @@ const DrawText = {
   },
 
   onTrash() {
+    // eslint-disable-next-line prefer-rest-params
     this.stopDrawingAndRemove(...arguments);
   },
 
