@@ -1,6 +1,6 @@
 {
   "name": "ns-mapbox-gl-draw",
-  "version": "1.0.31",
+  "version": "1.0.34",
   "description": "A drawing component for Mapbox GL JS",
   "homepage": "https://github.com/DinakaranS/ns-mapbox-gl-draw",
   "author": "mapbox",
