@@ -55,6 +55,9 @@ function cancelInteraction(instance, formContainer) {
   if (formContainer && mapContainer.contains(formContainer)) {
     mapContainer.removeChild(formContainer);
   }
+  if (currentPoint) {
+    instance.deleteFeature([currentPoint.id], { silent: true });
+  }
 }
 
 function finalizeInteraction(instance, formContainer) {
