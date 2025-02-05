@@ -58,6 +58,8 @@ function cancelInteraction(instance, formContainer) {
   if (currentPoint) {
     instance.deleteFeature([currentPoint.id], { silent: true });
   }
+  instance.map.fire("cancel_text");
+  instance.changeMode("draw_text");
 }
 
 function finalizeInteraction(instance, formContainer) {
