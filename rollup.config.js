@@ -18,6 +18,7 @@ export default {
     indent: false
   },
   treeshake: true,
+  external: ['mapbox-gl'],
   plugins: [
     replace({
       'process.env.NODE_ENV': "'browser'",
