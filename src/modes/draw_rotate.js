@@ -95,7 +95,7 @@ const RotateMode = {
               distanceFromCenter,
               bearingFromCenter + draggedBearing
             );
-            console.log(distanceFromCenter);
+            // console.log(distanceFromCenter);
             rotatedCoords.push(newPoint.geometry.coordinates);
           });
           break;
@@ -112,7 +112,7 @@ const RotateMode = {
               distanceFromCenter,
               bearingFromCenter + draggedBearing
             );
-            console.log(distanceFromCenter);
+            // console.log(distanceFromCenter);
             polyCoords.push(newPoint.geometry.coordinates);
           });
           // console.log(polyCoords);

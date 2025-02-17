@@ -14,7 +14,7 @@ function createFormContainer(map, lngLat) {
   const formContainer = document.createElement("div");
   formContainer.id = FORM_CONTAINER_ID;
   Object.assign(formContainer.style, {
-    position: "absolute",
+    position: "absolute", // Change to absolute to keep it relative to the map
     left: `${pixels.x}px`,
     top: `${pixels.y}px`,
     zIndex: "10",
@@ -24,6 +24,7 @@ function createFormContainer(map, lngLat) {
     borderRadius: "5px",
     boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
     width: "260px",
+    transform: "translate(-50%, -100%)", // Center the container above the point
   });
 
   const cancelButton = document.createElement("span");
@@ -47,14 +48,33 @@ function createFormContainer(map, lngLat) {
   formContainer.appendChild(cancelButton);
   formContainer.appendChild(form);
 
+  // Function to update container position on map movements
+  const updatePosition = () => {
+    const newPixels = map.project(lngLat);
+    formContainer.style.left = `${newPixels.x}px`;
+    formContainer.style.top = `${newPixels.y}px`;
+  };
+
+  map.on("move", updatePosition);
+  map.on("zoom", updatePosition);
+
+  // Cleanup event listeners when form is removed
+  formContainer.removeEventListener = () => {
+    map.off("move", updatePosition);
+    map.off("zoom", updatePosition);
+  };
+
   return formContainer;
 }
 
+
 function cancelInteraction(instance, formContainer) {
   const mapContainer = instance.map.getContainer();
+
   if (formContainer && mapContainer.contains(formContainer)) {
     mapContainer.removeChild(formContainer);
   }
+
   if (currentPoint) {
     instance.deleteFeature([currentPoint.id], { silent: true });
   }
