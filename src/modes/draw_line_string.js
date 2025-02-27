@@ -156,7 +156,8 @@ DrawLineString.onKeyUp = function (state, e) {
     });
   } else if (CommonSelectors.isEscapeKey(e)) {
     this.deleteFeature([state.line.id], { silent: true });
-    this.changeMode(Constants.modes.SIMPLE_SELECT);
+    const prevOpts = state.opts || {};
+    this.changeMode(Constants.modes.DRAW_LINE_STRING, prevOpts);
   }
 };
 

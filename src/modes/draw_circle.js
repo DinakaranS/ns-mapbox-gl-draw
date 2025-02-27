@@ -5,7 +5,6 @@ import draw_line_string from "./draw_line_string";
 import { createVertex } from "../lib";
 import create_distance from "../lib/create_distance";
 import centerOfMass from "@turf/center-of-mass";
-import DrawLineString from "./draw_line_string";
 
 const CircleMode = { ...draw_line_string };
 
@@ -71,6 +70,29 @@ CircleMode.clickAnywhere = function (state, e) {
   return null;
 };
 
+CircleMode.onKeyUp = function (state, e) {
+  if (e.keyCode === 27) {
+    // ESC key - Cancel drawing
+    this.deleteFeature([state.line.id], { silent: true });
+
+    // Store the previous options before exiting
+    const prevOpts = state.opts || {};
+
+    // Reset state properties
+    state.startPoint = null;
+    state.endPoint = null;
+
+    // Exit to simple_select mode (temporarily)
+    this.changeMode("simple_select", {}, { silent: true });
+
+    // Re-enter CircleMode with previous options
+    setTimeout(() => {
+      this.changeMode("draw_circle", prevOpts);
+    }, 10);
+  }
+  return null;
+};
+
 // creates the final geojson point feature with a radius property
 // triggers draw.create
 CircleMode.onStop = function (state) {
@@ -104,9 +126,9 @@ CircleMode.onStop = function (state) {
       if (opts.measurement) {
         const displayMeasurements = create_distance(circleFeature);
         circleFeature.properties.distance =
-          opts.unit === "metric"
-            ? displayMeasurements.metric
-            : displayMeasurements.standard;
+          opts.unit === "metric" ?
+            displayMeasurements.metric :
+            displayMeasurements.standard;
       }
       this.addFeature(customCircle);
       this.map.fire("draw.create", {
@@ -114,8 +136,9 @@ CircleMode.onStop = function (state) {
       });
       this.deleteFeature([state.line.id], { silent: true });
     } else {
+      const prevOpts = state.opts || {};
       this.deleteFeature([state.line.id], { silent: true });
-      this.changeMode("simple_select", {}, { silent: true });
+      this.changeMode("draw_circle", prevOpts);
     }
   } catch (e) {
     // eslint-disable-next-line
@@ -135,14 +158,14 @@ CircleMode.toDisplayFeatures = function (state, geojson, display) {
   const vertex = createVertex(
     state.line.id,
     geojson.geometry.coordinates[
-      state.direction === "forward"
-        ? geojson.geometry.coordinates.length - 2
-        : 1
+      state.direction === "forward" ?
+        geojson.geometry.coordinates.length - 2 :
+        1
     ],
     `${
-      state.direction === "forward"
-        ? geojson.geometry.coordinates.length - 2
-        : 1
+      state.direction === "forward" ?
+        geojson.geometry.coordinates.length - 2 :
+        1
     }`,
     false
   );
@@ -173,9 +196,9 @@ CircleMode.toDisplayFeatures = function (state, geojson, display) {
   if (opts.measurement) {
     const displayMeasurements = create_distance(circleFeature);
     properties.distance =
-      opts.unit === "metric"
-        ? displayMeasurements.metric
-        : displayMeasurements.standard;
+      opts.unit === "metric" ?
+        displayMeasurements.metric :
+        displayMeasurements.standard;
   }
   // create custom feature for the current pointer position
   const currentVertex = {
@@ -204,9 +227,9 @@ function getCircleData(state, geojson, selected) {
     ...opts.properties,
     ...circleFeature.properties,
     meta: "radius",
-    active: selected
-      ? Constants.activeStates.ACTIVE
-      : Constants.activeStates.INACTIVE,
+    active: selected ?
+      Constants.activeStates.ACTIVE :
+      Constants.activeStates.INACTIVE,
   };
 
   return circleFeature;

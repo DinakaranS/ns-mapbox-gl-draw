@@ -87,7 +87,11 @@ DrawPolygon.onTap = DrawPolygon.onClick = function (state, e) {
 DrawPolygon.onKeyUp = function (state, e) {
   if (CommonSelectors.isEscapeKey(e)) {
     this.deleteFeature([state.polygon.id], { silent: true });
-    this.changeMode(Constants.modes.SIMPLE_SELECT);
+    const prevOpts = state.opts || {};
+    this.changeMode(Constants.modes.SIMPLE_SELECT, {}, { silent: true });
+    setTimeout(() => {
+      this.changeMode(Constants.modes.DRAW_POLYGON, prevOpts);
+    }, 10);
   } else if (CommonSelectors.isEnterKey(e)) {
     this.changeMode(Constants.modes.SIMPLE_SELECT, {
       featureIds: [state.polygon.id],

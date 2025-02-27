@@ -103,10 +103,30 @@ const DrawRectangle = {
       ); //minX,minY - ending point (equals to starting point)
     }
   },
-  // Whenever a user clicks on a key while focused on the map, it will be sent here
+
   onKeyUp (state, e) {
-    if (e.keyCode === 27) return this.changeMode("simple_select");
+    if (e.keyCode === 27) {
+      // ESC key - Cancel drawing
+      this.deleteFeature([state.rectangle.id], { silent: true });
+
+      // Store the previous options
+      const prevOpts = state.opts || {};
+
+      // Reset state properties
+      state.startPoint = null;
+      state.endPoint = null;
+
+      // Exit to simple_select mode
+      this.changeMode("simple_select", {}, { silent: true });
+
+      // Re-enter DrawRectangle mode with previous options
+      setTimeout(() => {
+        this.changeMode("draw_rectangle", prevOpts);
+      }, 10);
+    }
+    return null;
   },
+
   onStop (state) {
     doubleClickZoom.enable(this);
     this.updateUIClasses({ mouse: "none" });
