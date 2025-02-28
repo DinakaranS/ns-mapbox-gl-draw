@@ -1,48 +1,59 @@
-import { geojsonTypes, activeStates } from "../constants"; // Assume these are the only used constants
+import { geojsonTypes, activeStates } from "../constants";
 import bearing from "@turf/bearing";
-import { lineString } from '@turf/helpers';
-import calculateDistance from "./create_distance"; // Renamed for clarity and camelCase
+import { lineString } from "@turf/helpers";
+import calculateDistance from "./create_distance"; // Renamed for clarity
 
-/**
- *
- * @param parentId
- * @param currentVertexPosition
- * @param coordinates
- * @param isSelected
- * @param meta
- * @param units
- * @param showBearing
- * @returns {{}|{geometry: {coordinates: *, type: string}, type: string, properties: {parent, meta: string, active: (string)}}}
- */
-export default function(parentId, currentVertexPosition, coordinates, isSelected, meta = 'arrowPosition', units = '', showBearing = true) {
-    try {
-        const additionalProps = {};
-        if (units) {
-            const distanceVertex = lineString([coordinates[currentVertexPosition - 1], coordinates[currentVertexPosition]]);
-            const { metric, standard } = calculateDistance(distanceVertex);
-            additionalProps.distance = units === 'metric' ? metric : standard;
-        }
+export default function createVertex(
+  parentId,
+  currentVertexPosition,
+  coordinates,
+  isSelected,
+  meta = "arrowPosition",
+  units = "",
+  showBearing = true
+) {
+  // Validate coordinates
+  if (
+    !coordinates ||
+    !Array.isArray(coordinates) ||
+    coordinates.length < currentVertexPosition
+  ) {
+    console.error("Invalid coordinates provided for vertex creation.");
+    return null;
+  }
 
-        if (showBearing) {
-            const rotation = bearing(coordinates[currentVertexPosition - 1], coordinates[currentVertexPosition]);
-            additionalProps.bearing = rotation || 0;
-        }
+  const prevCoord = coordinates[currentVertexPosition - 1];
+  const currCoord = coordinates[currentVertexPosition];
 
-        return {
-            type: geojsonTypes.FEATURE,
-            properties: {
-                meta,
-                parent: parentId,
-                active: isSelected ? activeStates.ACTIVE : activeStates.INACTIVE,
-                ...additionalProps
-            },
-            geometry: {
-                type: geojsonTypes.POINT,
-                coordinates: coordinates[currentVertexPosition]
-            }
-        };
-    } catch (error) {
-        console.log(error);
-        return null;
-    }
+  if (!prevCoord || !currCoord) {
+    console.error("Invalid vertex positions for arrow creation.");
+    return null;
+  }
+
+  const properties = {
+    meta,
+    parent: parentId,
+    active: isSelected ? activeStates.ACTIVE : activeStates.INACTIVE,
+  };
+
+  // Calculate distance if units are provided
+  if (units) {
+    const distanceVertex = lineString([prevCoord, currCoord]);
+    const { metric, standard } = calculateDistance(distanceVertex);
+    properties.distance = units === "metric" ? metric : standard;
+  }
+
+  // Calculate bearing if required
+  if (showBearing) {
+    properties.bearing = bearing(prevCoord, currCoord) || 0;
+  }
+
+  return {
+    type: geojsonTypes.FEATURE,
+    properties,
+    geometry: {
+      type: geojsonTypes.POINT,
+      coordinates: currCoord,
+    },
+  };
 }

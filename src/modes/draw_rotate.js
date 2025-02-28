@@ -2,27 +2,14 @@ import distance from "@turf/distance";
 import centroid from "@turf/centroid";
 import bearing from "@turf/bearing";
 import destination from "@turf/destination";
-// import { EventEmitter } from "events";
-
-// const emitter = new EventEmitter();
 
 const RotateMode = {
-  rotatestart (selectedFeature, originalCenter) {},
-  rotating (selectedFeature, originalCenter, lastMouseDown) {},
-  rotateend (selectedFeature) {},
+  rotatestart(selectedFeature, originalCenter) {},
+  rotating(selectedFeature, originalCenter, lastMouseDown) {},
+  rotateend(selectedFeature) {},
 
-  onSetup (opts) {
+  onSetup(opts) {
     const state = {};
-
-    // emitter.addListener('rotatestart',function() {
-    //     this.rotatestart(state.selectedFeature,state.originalCenter)
-    // }.bind(this));
-    // emitter.addListener('rotating', function() {
-    //     this.rotating(state.selectedFeature,state.originalCenter,state.lastMouseDownLngLat)
-    // }.bind(this));
-    // emitter.addListener('rotateend', function() {
-    //     this.rotateend(state.selectedFeature,state.lastMouseDownLngLat)
-    // }.bind(this));
 
     state.selectedFeature = opts.selectedFeature || false;
     state.lastMouseDownLngLat = false;
@@ -31,7 +18,7 @@ const RotateMode = {
     return state;
   },
 
-  onMouseDown (state, e) {
+  onMouseDown(state, e) {
     if (e.featureTarget) {
       if (this._ctx.api.get(e.featureTarget.properties.id)) {
         e.target["dragPan"].disable();
@@ -46,21 +33,21 @@ const RotateMode = {
     return state;
   },
 
-  toDisplayFeatures (state, geojson, display) {
+  toDisplayFeatures(state, geojson, display) {
     display(geojson);
   },
 
-  onDrag (state, e) {
+  onDrag(state, e) {
     if (state.selectedFeature && state.mode) {
       if (state.mode === "rotate") {
-        state.lastMouseDownLngLat = { lng: e.lngLat.lng, lat: e.lngLat.lat };
+        state.lastMouseDownLngLat = {lng: e.lngLat.lng, lat: e.lngLat.lat};
         const draggedBearing = bearing(state.originalCenter, [
           e.lngLat.lng,
           e.lngLat.lat,
         ]);
         let rotatedCoords = [];
         switch (state.originalFeature.properties["meta:type"]) {
-        case "Point":
+        case "Point": {
           // Use the point itself as the center for a point geometry
           const pointCoords = state.originalFeature.geometry.coordinates;
 
@@ -82,11 +69,10 @@ const RotateMode = {
           // Apply the new coordinates to the selected feature
           state.selectedFeature.geometry.coordinates = rotatedCoords;
           break;
-
-        case "LineString":
+        }
+        case "LineString": {
           state.originalFeature.geometry.coordinates.forEach((
             coords,
-            index
           ) => {
             const distanceFromCenter = distance(state.originalCenter, coords);
             const bearingFromCenter = bearing(state.originalCenter, coords);
@@ -95,15 +81,15 @@ const RotateMode = {
               distanceFromCenter,
               bearingFromCenter + draggedBearing
             );
-            // console.log(distanceFromCenter);
+              // console.log(distanceFromCenter);
             rotatedCoords.push(newPoint.geometry.coordinates);
           });
           break;
-        case "Polygon":
+        }
+        case "Polygon": {
           const polyCoords = [];
           state.originalFeature.geometry.coordinates[0].forEach((
             coords,
-            index
           ) => {
             const distanceFromCenter = distance(state.originalCenter, coords);
             const bearingFromCenter = bearing(state.originalCenter, coords);
@@ -112,20 +98,20 @@ const RotateMode = {
               distanceFromCenter,
               bearingFromCenter + draggedBearing
             );
-            // console.log(distanceFromCenter);
+              // console.log(distanceFromCenter);
             polyCoords.push(newPoint.geometry.coordinates);
           });
           // console.log(polyCoords);
           rotatedCoords.push(polyCoords);
           break;
-        case "MultiLineString":
-          var multipolys = [];
+        }
+        case "MultiLineString": {
+          const multipolys = [];
           state.originalFeature.geometry.coordinates.forEach((
             polygon,
-            index
           ) => {
             const polyCoords = [];
-            polygon.forEach((coords, index) => {
+            polygon.forEach((coords) => {
               const distanceFromCenter = distance(
                 state.originalCenter,
                 coords
@@ -142,16 +128,16 @@ const RotateMode = {
           });
           rotatedCoords = multipolys;
           break;
-        case "MultiPolygon":
-          var multipolys = [];
+        }
+        case "MultiPolygon": {
+          const multipolys = [];
           state.originalFeature.geometry.coordinates.forEach((
-            polygon,
-            index
+            polygon
           ) => {
             const polyCoords = [];
-            polygon.forEach((polygonHoles, index) => {
+            polygon.forEach((polygonHoles) => {
               const polyHoleCoords = [];
-              polygonHoles.forEach((coords, index) => {
+              polygonHoles.forEach((coords) => {
                 const distanceFromCenter = distance(
                   state.originalCenter,
                   coords
@@ -173,6 +159,7 @@ const RotateMode = {
           });
           rotatedCoords = multipolys;
           break;
+        }
         default:
           return;
         }
@@ -184,9 +171,8 @@ const RotateMode = {
     }
   },
 
-  onMouseUp (state, e) {
+  onMouseUp(state, e) {
     e.target["dragPan"].enable();
-    // emitter.emit('rotateend');
     state.selectedFeature = false;
     state.lastMouseDownLngLat = false;
     state.originalCenter = false;

@@ -9,92 +9,68 @@ import centerOfMass from "@turf/center-of-mass";
 const CircleMode = { ...draw_line_string };
 
 function createGeoJSONCircle(center, radiusInKm, parentId, points = 64) {
-  const coords = {
-    latitude: center[1],
-    longitude: center[0],
-  };
+  if (!center || center.length !== 2) return null; // Ensure center is valid
 
-  const km = radiusInKm;
+  const [longitude, latitude] = center;
+  const coordinates = [];
+  const deltaLng = radiusInKm / (111.32 * Math.cos((latitude * Math.PI) / 180));
+  const deltaLat = radiusInKm / 110.574;
 
-  const ret = [];
-  const distanceX = km / (111.32 * Math.cos((coords.latitude * Math.PI) / 180));
-  const distanceY = km / 110.574;
-
-  let theta;
-  let x;
-  let y;
-  for (let i = 0; i < points; i += 1) {
-    theta = (i / points) * (2 * Math.PI);
-    x = distanceX * Math.cos(theta);
-    y = distanceY * Math.sin(theta);
-
-    ret.push([coords.longitude + x, coords.latitude + y]);
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * (2 * Math.PI);
+    coordinates.push([longitude + deltaLng * Math.cos(theta), latitude + deltaLat * Math.sin(theta)]);
   }
-  ret.push(ret[0]);
+  coordinates.push(coordinates[0]); // Close the circle
 
   return {
     type: "Feature",
-    geometry: {
-      type: "Polygon",
-      coordinates: [ret],
-    },
-    properties: {
-      parent: parentId,
-    },
+    geometry: { type: "Polygon", coordinates: [coordinates] },
+    properties: { parent: parentId },
   };
 }
 
 CircleMode.clickAnywhere = function (state, e) {
-  // this ends the drawing after the user creates a second point, triggering this.onStop
+  if (!state || !state.line) return;
+
   if (state.currentVertexPosition === 1) {
-    state.line.addCoordinate(0, e.lngLat.lng, e.lngLat.lat); // eslint-disable-next-line
-    return this.changeMode("simple_select", { featureIds: [state.line.id] });
-  } // eslint-disable-next-line
-  this.updateUIClasses({ mouse: "add" });
-  state.line.updateCoordinate(
-    state.currentVertexPosition,
-    e.lngLat.lng,
-    e.lngLat.lat
-  );
-  if (state.direction === "forward") {
-    state.currentVertexPosition += 1; // eslint-disable-line
-    state.line.updateCoordinate(
-      state.currentVertexPosition,
-      e.lngLat.lng,
-      e.lngLat.lat
-    );
-  } else {
     state.line.addCoordinate(0, e.lngLat.lng, e.lngLat.lat);
+    return this.changeMode("simple_select", { featureIds: [state.line.id] });
   }
 
-  return null;
+  this.updateUIClasses({ mouse: "add" });
+  state.line.updateCoordinate(state.currentVertexPosition, e.lngLat.lng, e.lngLat.lat);
+  state.currentVertexPosition++;
+  state.line.updateCoordinate(state.currentVertexPosition, e.lngLat.lng, e.lngLat.lat);
 };
 
 CircleMode.onKeyUp = function (state, e) {
-  if (e.keyCode === 27) {
-    // ESC key - Cancel drawing
-    this.deleteFeature([state.line.id], { silent: true });
+  try {
+    if (e.keyCode === 27) {
+      // ESC key - Cancel drawing
+      this.deleteFeature([state.line.id], { silent: true });
 
-    // Store the previous options before exiting
-    const prevOpts = state.opts || {};
+      // Store the previous options before exiting
+      const prevOpts = state.opts || {};
 
-    // Reset state properties
-    state.startPoint = null;
-    state.endPoint = null;
+      // Reset state properties
+      state.startPoint = null;
+      state.endPoint = null;
 
-    // Exit to simple_select mode (temporarily)
-    this.changeMode("simple_select", {}, { silent: true });
+      // Exit to simple_select mode (temporarily)
+      this.changeMode("simple_select", {}, { silent: true });
 
-    // Re-enter CircleMode with previous options
-    setTimeout(() => {
-      this.changeMode("draw_circle", prevOpts);
-    }, 10);
+      // Re-enter CircleMode with previous options
+      setTimeout(() => {
+        this.changeMode("draw_circle", prevOpts);
+      }, 10);
+    }
+    return null;
+  } catch (e) {
+    console.error(e);
+    return null;
   }
-  return null;
 };
 
-// creates the final geojson point feature with a radius property
-// triggers draw.create
 CircleMode.onStop = function (state) {
   try {
     doubleClickZoom.enable(this);
@@ -147,92 +123,63 @@ CircleMode.onStop = function (state) {
 };
 
 CircleMode.toDisplayFeatures = function (state, geojson, display) {
-  const isActiveLine = geojson.properties.id === state.line.id;
-  geojson.properties.active = isActiveLine ? "true" : "false";
-  if (!isActiveLine) return display(geojson);
+  if (!state || !geojson || !state.line) return;
 
-  // Only render the line if it has at least one real coordinate
-  if (geojson.geometry.coordinates.length < 2) return null;
+  if (geojson.properties.id !== state.line.id) {
+    return display(geojson);
+  }
+
+  geojson.properties.active = "true";
+
+  if (geojson.geometry.coordinates.length < 2) return;
+
   geojson.properties.meta = "feature";
-  // displays center vertex as a point feature
-  const vertex = createVertex(
-    state.line.id,
-    geojson.geometry.coordinates[
-      state.direction === "forward" ?
-        geojson.geometry.coordinates.length - 2 :
-        1
-    ],
-    `${
-      state.direction === "forward" ?
-        geojson.geometry.coordinates.length - 2 :
-        1
-    }`,
-    false
-  );
 
-  // Ensure `properties` exists before modifying it
-  vertex.properties = {
-    ...vertex.properties, // Keep existing properties
-    user_color: geojson.properties.user_color, // Add new field
-  };
+  const lastIndex = state.direction === "forward" ? geojson.geometry.coordinates.length - 2 : 1;
+
+  const vertex = createVertex(state.line.id, geojson.geometry.coordinates[lastIndex], String(lastIndex), false);
+  vertex.properties = { ...vertex.properties, user_color: geojson.properties.user_color };
 
   display(vertex);
-
-  // displays the line as it is drawn
   display(geojson);
 
   const circleFeature = getCircleData(state, geojson, true);
+  if (!circleFeature) return;
 
-  // create custom feature for radius circlemarker
   circleFeature.properties.user_fillColor = geojson.properties.user_color;
   circleFeature.properties.user_color = geojson.properties.user_color;
+
   display(circleFeature);
 
-  const properties = {
-    meta: "currentPosition",
-    parent: state.line.id,
-  };
-  const opts = state.opts || {};
-  if (opts.measurement) {
+  const properties = { meta: "currentPosition", parent: state.line.id };
+
+  if (state.opts?.measurement) {
     const displayMeasurements = create_distance(circleFeature);
     properties.distance =
-      opts.unit === "metric" ?
-        displayMeasurements.metric :
-        displayMeasurements.standard;
+      state.opts.unit === "metric" ? displayMeasurements.metric : displayMeasurements.standard;
   }
-  // create custom feature for the current pointer position
-  const currentVertex = {
+
+  display({
     type: "Feature",
-    properties: {
-      ...properties,
-      user_color: geojson.properties.user_color || "#FF0010",
-    },
-    geometry: {
-      type: "Point",
-      coordinates: centerOfMass(circleFeature.geometry).geometry.coordinates,
-    },
-  };
-
-  display(currentVertex);
-
-  return null;
+    properties: { ...properties, user_color: geojson.properties.user_color || "#FF0010" },
+    geometry: { type: "Point", coordinates: centerOfMass(circleFeature.geometry).geometry.coordinates },
+  });
 };
 
 function getCircleData(state, geojson, selected) {
-  const opts = state.opts || {};
+  if (!geojson || !geojson.geometry || !geojson.geometry.coordinates[0]) return null;
+
   const center = geojson.geometry.coordinates[0];
   const radiusInKm = lineDistance(geojson, "kilometers");
-  const circleFeature = createGeoJSONCircle(center, radiusInKm, state.line.id);
-  circleFeature.properties = {
-    ...opts.properties,
-    ...circleFeature.properties,
-    meta: "radius",
-    active: selected ?
-      Constants.activeStates.ACTIVE :
-      Constants.activeStates.INACTIVE,
-  };
 
-  return circleFeature;
+  return {
+    ...createGeoJSONCircle(center, radiusInKm, state.line.id),
+    properties: {
+      ...state.opts?.properties,
+      meta: "radius",
+      active: selected ? Constants.activeStates.ACTIVE : Constants.activeStates.INACTIVE,
+    },
+  };
 }
 
 export default CircleMode;

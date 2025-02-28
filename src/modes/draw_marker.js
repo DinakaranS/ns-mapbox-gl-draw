@@ -24,7 +24,7 @@ DrawMarker.onSetup = function (opts) {
     trash: true
   });
 
-  return {point, opts: opts || {}};
+  return { point, opts: opts || {} };
 };
 
 DrawMarker.stopDrawingAndRemove = function (state) {
@@ -69,4 +69,3 @@ DrawMarker.onKeyUp = function (state, e) {
 };
 
 export default DrawMarker;
-

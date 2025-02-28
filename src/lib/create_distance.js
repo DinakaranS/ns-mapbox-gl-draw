@@ -116,7 +116,7 @@ function getWidthHeight(feature, measurementSystem) {
   const bottomLeft = point([bounds._ne.lng, bounds._sw.lat]);
   const bottomRight = point([bounds._sw.lng, bounds._sw.lat]);
 
-  const options = {units: 'miles'};
+  const options = 'miles';
   const distanceWidth = distance(bottomLeft, bottomRight, options);
   const distanceHeight = distance(topLeft, bottomLeft, options);
 
@@ -147,7 +147,7 @@ function getWidthHeight(feature, measurementSystem) {
   }
 
   if (feature.properties &&
-        feature.properties.name === 'Rectangle') {
+    feature.properties.name === 'Rectangle') {
     rectangleFlag1 = true;
     rectangleFlag2 = true;
     rectangleFlag3 = true;

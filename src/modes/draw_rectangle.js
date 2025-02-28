@@ -33,7 +33,10 @@ const DrawRectangle = {
     const properties = (opts && opts.properties) || {};
     const rectangle = this.newFeature({
       type: "Feature",
-      properties: { ...properties },
+      properties: {
+        isRectangle: true,
+        ...properties,
+      },
       geometry: {
         type: "Polygon",
         coordinates: [[]],
@@ -103,7 +106,7 @@ const DrawRectangle = {
       ); //minX,minY - ending point (equals to starting point)
     }
   },
-
+  // Whenever a user clicks on a key while focused on the map, it will be sent here
   onKeyUp (state, e) {
     if (e.keyCode === 27) {
       // ESC key - Cancel drawing
@@ -126,7 +129,6 @@ const DrawRectangle = {
     }
     return null;
   },
-
   onStop (state) {
     doubleClickZoom.enable(this);
     this.updateUIClasses({ mouse: "none" });
@@ -162,7 +164,6 @@ const DrawRectangle = {
 
     // Only render the rectangular polygon if it has the starting point
     if (!state.startPoint) return;
-
     display(geojson);
 
     const opts = state.opts || {};
@@ -179,10 +180,9 @@ const DrawRectangle = {
           coordinates: centerOfMass(geojson.geometry).geometry.coordinates,
         },
       };
-
+      console.log(currentVertex)
       display(currentVertex);
     }
-
     return null;
   },
   onTrash (state) {
