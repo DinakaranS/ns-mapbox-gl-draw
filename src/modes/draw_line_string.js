@@ -1,17 +1,16 @@
-import * as CommonSelectors from '../lib/common_selectors.js';
-import isEventAtCoordinates from '../lib/is_event_at_coordinates.js';
-import doubleClickZoom from '../lib/double_click_zoom.js';
-import * as Constants from '../constants.js';
-import createVertex from '../lib/create_vertex.js';
-import create_distance from "../lib/create_distance.js";
-import create_additional_vertex from "../lib/create_additional_vertex.js";
+import * as CommonSelectors from '../lib/common_selectors';
+import isEventAtCoordinates from '../lib/is_event_at_coordinates';
+import doubleClickZoom from '../lib/double_click_zoom';
+import * as Constants from '../constants';
+import createVertex from '../lib/create_vertex';
+import create_distance from "../lib/create_distance";
+import create_additional_vertex from "../lib/create_additional_vertex";
 
 const DrawLineString = {};
 
 DrawLineString.onSetup = function(opts) {
   opts = opts || {};
   const featureId = opts.featureId;
-  DrawLineString.color = opts.color || opts.user_color;
 
   let line, currentVertexPosition;
   let direction = 'forward';
@@ -44,9 +43,10 @@ DrawLineString.onSetup = function(opts) {
       throw new Error('`from` should match the point at either the start or the end of the provided LineString');
     }
   } else {
+    const properties = (opts && opts.properties) || {};
     line = this.newFeature({
       type: Constants.geojsonTypes.FEATURE,
-      properties: {},
+      properties: {...properties},
       geometry: {
         type: Constants.geojsonTypes.LINE_STRING,
         coordinates: []
@@ -72,12 +72,12 @@ DrawLineString.onSetup = function(opts) {
   };
 };
 
-DrawLineString.clickAnywhere = function(state, e) {
+DrawLineString.clickAnywhere = function (state, e) {
   if (state.currentVertexPosition > 0 && isEventAtCoordinates(e, state.line.coordinates[state.currentVertexPosition - 1]) ||
-      state.direction === 'backwards' && isEventAtCoordinates(e, state.line.coordinates[state.currentVertexPosition + 1])) {
-    return this.changeMode(Constants.modes.SIMPLE_SELECT, { featureIds: [state.line.id] });
+        state.direction === 'backwards' && isEventAtCoordinates(e, state.line.coordinates[state.currentVertexPosition + 1])) {
+    return this.changeMode(Constants.modes.SIMPLE_SELECT, {featureIds: [state.line.id]});
   }
-  this.updateUIClasses({ mouse: Constants.cursors.ADD });
+  this.updateUIClasses({mouse: Constants.cursors.ADD});
   state.line.updateCoordinate(state.currentVertexPosition, e.lngLat.lng, e.lngLat.lat);
   if (state.direction === 'forward') {
     state.currentVertexPosition++;
@@ -87,32 +87,32 @@ DrawLineString.clickAnywhere = function(state, e) {
   }
 };
 
-DrawLineString.clickOnVertex = function(state) {
-  return this.changeMode(Constants.modes.SIMPLE_SELECT, { featureIds: [state.line.id] });
+DrawLineString.clickOnVertex = function (state) {
+  return this.changeMode(Constants.modes.SIMPLE_SELECT, {featureIds: [state.line.id]});
 };
 
-DrawLineString.onMouseMove = function(state, e) {
+DrawLineString.onMouseMove = function (state, e) {
   state.line.updateCoordinate(state.currentVertexPosition, e.lngLat.lng, e.lngLat.lat);
   if (CommonSelectors.isVertex(e)) {
-    this.updateUIClasses({ mouse: Constants.cursors.POINTER });
+    this.updateUIClasses({mouse: Constants.cursors.POINTER});
   }
 };
 
-DrawLineString.onTap = DrawLineString.onClick = function(state, e) {
+DrawLineString.onTap = DrawLineString.onClick = function (state, e) {
   if (CommonSelectors.isVertex(e)) return this.clickOnVertex(state, e);
   this.clickAnywhere(state, e);
 };
 
-DrawLineString.onKeyUp = function(state, e) {
+DrawLineString.onKeyUp = function (state, e) {
   if (CommonSelectors.isEnterKey(e)) {
-    this.changeMode(Constants.modes.SIMPLE_SELECT, { featureIds: [state.line.id] });
+    this.changeMode(Constants.modes.SIMPLE_SELECT, {featureIds: [state.line.id]});
   } else if (CommonSelectors.isEscapeKey(e)) {
-    this.deleteFeature([state.line.id], { silent: true });
+    this.deleteFeature([state.line.id], {silent: true});
     this.changeMode(Constants.modes.SIMPLE_SELECT);
   }
 };
 
-DrawLineString.onStop = function(state) {
+DrawLineString.onStop = function (state) {
   doubleClickZoom.enable(this);
   this.activateUIButton();
 
@@ -123,13 +123,13 @@ DrawLineString.onStop = function(state) {
   state.line.removeCoordinate(`${state.currentVertexPosition}`);
   if (state.line.isValid()) {
     if (state.opts.measurement) {
-      const { metric, standard } = create_distance(state.line.toGeoJSON());
+      const {metric, standard} = create_distance(state.line.toGeoJSON());
       state.line.properties = {
         ...state.line.properties,
-        distance: state.opts.unit === "metric" ? metric : standard,
+        distance: state.opts.unit === 'metric' ? metric : standard,
       };
     }
-    this.fire(Constants.events.CREATE, {
+    this.map.fire(Constants.events.CREATE, {
       features: [state.line.toGeoJSON()]
     });
   } else {
@@ -150,31 +150,12 @@ DrawLineString.toDisplayFeatures = function(state, geojson, display) {
   // Only render the line if it has at least one real coordinate
   if (geojson.geometry.coordinates.length < 2) return;
   geojson.properties.meta = Constants.meta.FEATURE;
-  const vertex = createVertex(
+  display(createVertex(
     state.line.id,
     geojson.geometry.coordinates[state.direction === 'forward' ? geojson.geometry.coordinates.length - 2 : 1],
     `${state.direction === 'forward' ? geojson.geometry.coordinates.length - 2 : 1}`,
     false
-  );
-
-  // Modify the properties of the vertex
-  vertex.properties = {
-    ...vertex.properties, // Preserve existing properties
-    user_color: geojson.properties.user_color, // Add new field
-  };
-
-  display(vertex);
-
-  // For geojson
-  const updatedGeojson = {
-    ...geojson,
-    properties: {
-      ...geojson.properties, // Preserve existing properties
-      user_color: geojson.properties.user_color, // Add new field
-    },
-  };
-
-  display(updatedGeojson);
+  ));
 
   display(geojson);
 
@@ -190,11 +171,17 @@ DrawLineString.toDisplayFeatures = function(state, geojson, display) {
       opts.unit
     );
 
-    distanceVertex.properties.color = geojson.properties.color || "#FF0010";
-    distanceVertex.properties.user_color =
-      geojson.properties.user_color || "#FF0010";
+    if (distanceVertex) {
+      distanceVertex.properties = {
+        ...distanceVertex.properties,
+        user_color: geojson.properties.user_color || "#FF0010",
+      };
 
-    if (distanceVertex) display(distanceVertex);
+      display(distanceVertex);
+    }
+
+
+    if (distanceVertex)  display(distanceVertex);
   }
   return null;
 };
