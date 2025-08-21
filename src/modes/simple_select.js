@@ -127,7 +127,16 @@ SimpleSelect.onTap = SimpleSelect.onClick = function(state, e) {
   // Click (with or without shift) on no feature
   if (CommonSelectors.noTarget(e)) return this.clickAnywhere(state, e); // also tap
   if (CommonSelectors.isOfMetaType(Constants.meta.VERTEX)(e)) return this.clickOnVertex(state, e); //tap
-  if (CommonSelectors.isFeature(e)) return this.clickOnFeature(state, e);
+  if (CommonSelectors.isFeature(e)) {
+    if (e && typeof e.type !== 'undefined') {
+      // eslint-disable-next-line no-console
+      console.log('features');
+      return this.clickOnFeature(state, e);
+    } else {
+      console.warn('Invalid feature object or missing type:', e);
+      return false;
+    }
+  }
 };
 
 SimpleSelect.clickAnywhere = function (state) {
@@ -142,12 +151,31 @@ SimpleSelect.clickAnywhere = function (state) {
 };
 
 SimpleSelect.clickOnVertex = function(state, e) {
-  // Enter direct select mode
-  this.changeMode(Constants.modes.DIRECT_SELECT, {
-    featureId: e.featureTarget.properties.parent,
-    coordPath: e.featureTarget.properties.coord_path,
-    startPos: e.lngLat
-  });
+  const featureTarget = e.featureTarget;
+  if (
+    featureTarget &&
+    featureTarget.properties &&
+    featureTarget.properties.parent &&
+    featureTarget.properties.coord_path &&
+    e.lngLat
+  ) {
+    const featureId = featureTarget.properties.parent;
+    const feature = this.getFeature(featureId);
+
+    if (!feature) {
+      console.warn("Feature not found for ID:", featureId);
+      return;
+    }
+
+    this.changeMode(Constants.modes.DIRECT_SELECT, {
+      featureId,
+      coordPath: featureTarget.properties.coord_path,
+      startPos: e.lngLat
+    });
+  } else {
+    console.warn("Missing required data for direct_select mode:", featureTarget);
+  }
+
   this.updateUIClasses({ mouse: Constants.cursors.MOVE });
 };
 
@@ -173,11 +201,23 @@ SimpleSelect.clickOnFeature = function(state, e) {
 
   const isShiftClick = CommonSelectors.isShiftDown(e);
   const selectedFeatureIds = this.getSelectedIds();
-  const featureId = e.featureTarget.properties.id;
+  const featureId = e.featureTarget?.properties?.id;
+  if (!featureId) {
+    console.warn("Feature ID not found in clicked feature:", e.featureTarget);
+    return;
+  }
+  const feature = this.getFeature(featureId);
+  // eslint-disable-next-line no-console
+  console.log('featureId:', feature);
+  if (!feature || !feature.type) {
+    console.warn("Feature not found for ID:", featureId);
+    return;
+  }
+
   const isFeatureSelected = this.isSelected(featureId);
 
   // Click (without shift) on any selected feature but a point
-  if (!isShiftClick && isFeatureSelected && this.getFeature(featureId).type !== Constants.geojsonTypes.POINT) {
+  if (!isShiftClick && isFeatureSelected && feature.type !== Constants.geojsonTypes.POINT) {
     // Enter direct select mode
     return this.changeMode(Constants.modes.DIRECT_SELECT, {
       featureId

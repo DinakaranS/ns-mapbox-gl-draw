@@ -40,7 +40,7 @@ const RotateMode = {
   onDrag(state, e) {
     if (state.selectedFeature && state.mode) {
       if (state.mode === "rotate") {
-        state.lastMouseDownLngLat = {lng: e.lngLat.lng, lat: e.lngLat.lat};
+        state.lastMouseDownLngLat = { lng: e.lngLat.lng, lat: e.lngLat.lat };
         const draggedBearing = bearing(state.originalCenter, [
           e.lngLat.lng,
           e.lngLat.lat,
@@ -63,11 +63,14 @@ const RotateMode = {
             0, // Distance is zero because it's the same point
             bearingFromCenter + draggedBearing // New bearing after rotation
           );
-            // Update the point coordinates
+
+          // Update the point coordinates
           rotatedCoords = newPoint.geometry.coordinates;
 
           // Apply the new coordinates to the selected feature
           state.selectedFeature.geometry.coordinates = rotatedCoords;
+          state.selectedFeature.properties.angle =
+              (bearingFromCenter + draggedBearing) % 360;
           break;
         }
         case "LineString": {
@@ -88,9 +91,7 @@ const RotateMode = {
         }
         case "Polygon": {
           const polyCoords = [];
-          state.originalFeature.geometry.coordinates[0].forEach((
-            coords,
-          ) => {
+          state.originalFeature.geometry.coordinates[0].forEach((coords) => {
             const distanceFromCenter = distance(state.originalCenter, coords);
             const bearingFromCenter = bearing(state.originalCenter, coords);
             const newPoint = destination(

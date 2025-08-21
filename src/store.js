@@ -28,7 +28,9 @@ export default function Store(ctx) {
         // Fire deduplicated selection change event
         if (this._emitSelectionChange) {
           this.ctx.events.fire(Constants.events.SELECTION_CHANGE, {
-            features: this.getSelected().map(feature => feature.toGeoJSON()),
+            features: this.getSelected()
+              .map(feature => (feature ? feature.toGeoJSON() : null))
+              .filter(Boolean),
             points: this.getSelectedCoordinates().map(coordinate => ({
               type: Constants.geojsonTypes.FEATURE,
               properties: {},
