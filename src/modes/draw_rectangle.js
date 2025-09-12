@@ -180,7 +180,7 @@ const DrawRectangle = {
           coordinates: centerOfMass(geojson.geometry).geometry.coordinates,
         },
       };
-      console.log(currentVertex)
+      // console.log(currentVertex)
       display(currentVertex);
     }
     return null;
