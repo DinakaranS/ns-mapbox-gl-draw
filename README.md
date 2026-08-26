@@ -1,58 +1,48 @@
 # ns-mapbox-gl-draw
 
-#Inspired by [!@mapbox/mapbox-gl-draw](https://github.com/mapbox/mapbox-gl-draw.git)
+Adds support for drawing and editing features on [mapbox-gl-js](https://www.mapbox.com/mapbox-gl-js/) maps.
 
-[![Build Status](https://travis-ci.org/mapbox/mapbox-gl-draw.svg?branch=main)](https://travis-ci.org/mapbox/mapbox-gl-draw)
+Inspired by and tracking [@mapbox/mapbox-gl-draw](https://github.com/mapbox/mapbox-gl-draw) (currently in sync with upstream **1.5.1**), rewritten in TypeScript and extended with extra drawing modes and live measurement.
 
-Adds support for drawing and editing features on [mapbox-gl.js](https://www.mapbox.com/mapbox-gl-js/) maps. [See a live example here](https://www.mapbox.com/mapbox-gl-js/example/mapbox-gl-draw/)
-
-**Requires [mapbox-gl-js](https://github.com/mapbox/mapbox-gl-js).**
-
-**If you are developing with `mapbox-gl-draw`, see [API.md](https://github.com/mapbox/mapbox-gl-draw/blob/main/docs/API.md) for documentation.**
+**Requires [mapbox-gl-js](https://github.com/mapbox/mapbox-gl-js) v2 or newer.**
 
 ### Installing
 
 ```
-npm install ns-mapbox-gl-draw
+yarn add ns-mapbox-gl-draw
 ```
 
-Draw ships with CSS, make sure you include it in your build.
+Draw ships with CSS — make sure you include it in your build.
 
 ### Usage in your application
 
 #### JavaScript
 
-**When using modules**
-
 ```js
 import mapboxgl from 'mapbox-gl';
-import MapboxDraw from "ns-mapbox-gl-draw";
+import MapboxDraw from 'ns-mapbox-gl-draw';
 ```
 
-**When using a CDN**
-
-```html
-<script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js'></script>
-```
+The package also ships CommonJS (`require`) and UMD builds; the UMD bundle expects `mapboxgl` to already be on the page and exposes the global `MapboxDraw`.
 
 #### CSS
 
-**When using modules**
- ```js
-import 'ns-mapbox-gl-draw/dist/mapbox-gl-draw.css'
- ```
+```js
+import 'ns-mapbox-gl-draw/dist/mapbox-gl-draw.css';
+```
 
-**When using CDN**
+or, from plain HTML:
+
 ```html
-<link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css' type='text/css' />
+<link rel="stylesheet" href="node_modules/ns-mapbox-gl-draw/dist/mapbox-gl-draw.css" type="text/css" />
 ```
 
-### Typescript
+### TypeScript
 
-Typescript definition files are available as part of the [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/mapbox__mapbox-gl-draw) package.
+Type definitions are bundled with the package — there is nothing extra to install, and you should **not** install `@types/mapbox__mapbox-gl-draw` (those describe upstream, not this fork).
 
-```
-npm install @types/mapbox__mapbox-gl-draw
+```ts
+import MapboxDraw, { type DrawOptions, type DrawEvent } from 'ns-mapbox-gl-draw';
 ```
 
 ### Example usage
@@ -60,74 +50,81 @@ npm install @types/mapbox__mapbox-gl-draw
 ```js
 mapboxgl.accessToken = 'YOUR_ACCESS_TOKEN';
 
-var map = new mapboxgl.Map({
+const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/streets-v12',
-  center: [40, -74.50],
-  zoom: 9
+  center: [-74.5, 40],
+  zoom: 9,
 });
 
-var Draw = new MapboxDraw();
+const draw = new MapboxDraw();
 
-// Map#addControl takes an optional second argument to set the position of the control.
-// If no position is specified the control defaults to `top-right`. See the docs
-// for more details: https://docs.mapbox.com/mapbox-gl-js/api/#map#addcontrol
+// Map#addControl takes an optional second argument to set the position of the
+// control. If no position is specified it defaults to `top-right`.
+map.addControl(draw, 'top-left');
 
-map.addControl(Draw, 'top-left');
-
-map.on('load', function() {
+map.on('load', () => {
   // ALL YOUR APPLICATION CODE
 });
 ```
 
-https://www.mapbox.com/mapbox-gl-js/example/mapbox-gl-draw/
+### Modes
 
-### See [API.md](https://github.com/mapbox/mapbox-gl-draw/blob/main/docs/API.md) for complete reference.
+Alongside the upstream modes (`simple_select`, `direct_select`, `draw_point`, `draw_line_string`, `draw_polygon`), this fork adds:
 
-### Enhancements and New Interactions
+| Mode | Constant | Description |
+| --- | --- | --- |
+| `draw_rectangle` | `DRAW_RECTANGLE` | Drag out an axis-aligned rectangle, with live width/height/area readout |
+| `draw_circle` | `DRAW_CIRCLE` | Drag out a circle, with live radius/perimeter/area readout |
+| `draw_text` | `DRAW_TEXT` | Place a text label via an inline form |
+| `draw_line_arrow` | `DRAW_LINE_ARROW` | Line string annotated with directional arrow vertices |
+| `draw_rotate` | `DRAW_ROTATE` | Rotate an existing feature about its centre |
+| `draw_marker` | `DRAW_MARKER` | Place a marker feature |
 
-For additional functionality [check out our list of custom modes](https://github.com/mapbox/mapbox-gl-draw/blob/main/docs/MODES.md#available-custom-modes).
+Every name is reachable through the public constants, and each resolves to a registered mode:
 
-Mapbox Draw accepts functionality changes after the functionality has been proven out via a [custom mode](https://github.com/mapbox/mapbox-gl-draw/blob/main/docs/MODES.md#creating-modes-for-mapbox-draw). This lets users experiment and validate their mode before entering a review process, hopefully promoting innovation. When you write a custom mode, please open a PR adding it to our [list of custom modes](https://github.com/mapbox/mapbox-gl-draw/blob/main/docs/MODES.md#available-custom-modes).
+```js
+draw.changeMode(MapboxDraw.constants.modes.DRAW_RECTANGLE);
+```
+
+Measurement helpers backing those modes are exported for use in your own custom modes:
+
+```js
+const { createDistance, createAdditionalVertex } = MapboxDraw.lib;
+```
+
+See [docs/API.md](docs/API.md) and [docs/MODES.md](docs/MODES.md) for the full reference.
 
 ### Developing and testing
 
-Install dependencies, build the source files and crank up a server via:
+Requires Node `^20.19.0 || >=22.12.0`.
 
 ```
-git clone git@github.com:mapbox/mapbox-gl-draw.git
+git clone git@github.com:DinakaranS/ns-mapbox-gl-draw.git
+cd ns-mapbox-gl-draw
 yarn install
-yarn start & open "http://localhost:9967/debug/?access_token=<token>"
+yarn build
+yarn start          # serves example/ — add your Mapbox token in example/index.html
 ```
 
-### Testing
+Other useful scripts:
 
 ```
-npm run test
+yarn typecheck      # tsc --noEmit
+yarn lint           # eslint
+yarn format         # prettier --write
+yarn test           # runtime + all-modes suites (runs against dist/, so build first)
 ```
 
 ### Publishing
 
-To GitHub and NPM:
-
 ```
 npm version (major|minor|patch)
-git push --tags
-git push
+git push --follow-tags
 npm publish
 ```
 
-To CDN:
-
-```
-# make sure you are authenticated for AWS
-git checkout v{x.y.z}
-yarn install
-yarn run prepublish
-aws s3 cp --recursive --acl public-read dist s3://mapbox-gl-js/plugins/mapbox-gl-draw/v{x.y.z}
-```
-
-Update the version number in [the GL JS example](https://github.com/mapbox/mapbox-gl-js/blob/publisher-production/docs/pages/example/mapbox-gl-draw.html).
+`prepublishOnly` runs lint and a full build, so `dist/` is always regenerated before publish.
 
 ### Naming actions
 

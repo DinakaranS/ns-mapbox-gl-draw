@@ -1,0 +1,70 @@
+import * as Constants from './constants';
+import styles from './lib/theme';
+import modes from './modes/index';
+import type { DrawOptions } from './types';
+
+const defaultOptions: DrawOptions = {
+  defaultMode: Constants.modes.SIMPLE_SELECT,
+  keybindings: true,
+  touchEnabled: true,
+  clickBuffer: 2,
+  touchBuffer: 25,
+  boxSelect: true,
+  displayControlsDefault: true,
+  styles,
+  modes,
+  controls: {},
+  userProperties: false,
+  suppressAPIEvents: true,
+};
+
+const showControls = {
+  point: true,
+  line_string: true,
+  polygon: true,
+  trash: true,
+  combine_features: true,
+  uncombine_features: true,
+};
+
+const hideControls = {
+  point: false,
+  line_string: false,
+  polygon: false,
+  trash: false,
+  combine_features: false,
+  uncombine_features: false,
+};
+
+function addSources(styles: any[], sourceBucket: string): any[] {
+  return styles.map((style) => {
+    if (style.source) return style;
+    return {
+      ...style,
+      id: `${style.id}.${sourceBucket}`,
+      source: sourceBucket === 'hot' ? Constants.sources.HOT : Constants.sources.COLD,
+    };
+  });
+}
+
+export default function setupOptions(options: Partial<DrawOptions> = {}): DrawOptions {
+  let withDefaults: any = { ...options };
+
+  if (!options.controls) {
+    withDefaults.controls = {};
+  }
+
+  if (options.displayControlsDefault === false) {
+    withDefaults.controls = { ...hideControls, ...options.controls };
+  } else {
+    withDefaults.controls = { ...showControls, ...options.controls };
+  }
+
+  withDefaults = { ...defaultOptions, ...withDefaults };
+
+  withDefaults.styles = addSources(withDefaults.styles, 'cold').concat(
+    addSources(withDefaults.styles, 'hot'),
+  );
+
+  return withDefaults;
+}

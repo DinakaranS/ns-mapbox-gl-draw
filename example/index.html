@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ns-mapbox-gl-draw - Test All Modes</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.29.0/mapbox-gl.css" rel="stylesheet" />
+  <!-- The draw stylesheet lives in ../dist, outside this dev-server root, so it is
+       imported from the module script below rather than linked here. -->
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    .controls {
+      position: absolute; top: 10px; left: 10px; z-index: 2;
+      background: white; padding: 12px; border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15); max-width: 260px;
+    }
+    .controls h3 { margin-bottom: 8px; font-size: 14px; color: #333; }
+    .unit-row { display: flex; gap: 6px; }
+    .unit-row button { margin: 0; }
+    .unit-row button.active { background: #4264fb; color: #fff; border-color: #4264fb; }
+    .controls button {
+      display: block; width: 100%; margin: 4px 0; padding: 8px 12px;
+      border: 1px solid #ddd; border-radius: 4px; background: #fff;
+      cursor: pointer; font-size: 13px; text-align: left; transition: all 0.15s;
+    }
+    .controls button:hover { background: #f0f4ff; border-color: #4264fb; }
+    .controls button.active { background: #4264fb; color: white; border-color: #4264fb; }
+    .info { position: absolute; bottom: 10px; left: 10px; z-index: 2;
+      background: white; padding: 10px; border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15); font-size: 12px; max-width: 300px; }
+    .info strong { color: #4264fb; }
+    #feature-count { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="controls">
+    <h3>Units</h3>
+    <div class="unit-row">
+      <button id="unit-metric" onclick="setUnit('metric')">Metric</button>
+      <button id="unit-standard" onclick="setUnit('standard')">Imperial</button>
+    </div>
+    <hr style="margin: 8px 0; border: none; border-top: 1px solid #eee;" />
+    <h3>Draw Modes</h3>
+    <button onclick="changeMode('draw_point')">Point</button>
+    <button onclick="changeMode('draw_marker')">Marker</button>
+    <button onclick="changeMode('draw_line_string')">Line String</button>
+    <button onclick="changeMode('draw_line_arrow')">Line Arrow</button>
+    <button onclick="changeMode('draw_polygon')">Polygon</button>
+    <button onclick="changeMode('draw_rectangle')">Rectangle</button>
+    <button onclick="changeMode('draw_circle')">Circle</button>
+    <button onclick="changeMode('draw_text')">Text</button>
+    <button onclick="changeMode('simple_select')">Simple Select</button>
+    <button onclick="testRotate()">Rotate (select first)</button>
+    <hr style="margin: 8px 0; border: none; border-top: 1px solid #eee;" />
+    <button onclick="deleteAll()">Delete All</button>
+    <button onclick="getAll()">Log All Features</button>
+  </div>
+  <div class="info">
+    <p>Mode: <strong id="current-mode">simple_select</strong></p>
+    <p>Units: <strong id="current-unit">metric</strong></p>
+    <p>Features: <span id="feature-count">0</span></p>
+  </div>
+
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.29.0/mapbox-gl.js"></script>
+  <script type="module">
+    import MapboxDraw from '../dist/mapbox-gl-draw.mjs';
+    import '../dist/mapbox-gl-draw.css';
+
+    // Token resolution, in order: ?access_token=... in the URL, then whatever was
+    // remembered from a previous visit. Passing it once stores it for next time.
+    const tokenFromUrl = new URLSearchParams(location.search).get('access_token');
+    if (tokenFromUrl) localStorage.setItem('mapbox_access_token', tokenFromUrl);
+    const accessToken = tokenFromUrl || localStorage.getItem('mapbox_access_token');
+
+    if (!accessToken) {
+      document.getElementById('map').innerHTML =
+        '<div style="padding:40px;font:16px/1.6 -apple-system,sans-serif;max-width:640px">' +
+        '<h2>Mapbox access token needed</h2>' +
+        '<p>Reload this page with your token appended, for example:</p>' +
+        '<pre style="background:#f4f4f4;padding:12px;border-radius:6px;overflow-x:auto">' +
+        location.origin + location.pathname + '?access_token=pk.eyJ1...</pre>' +
+        '<p>It is saved in this browser afterwards, so you only need to pass it once.</p></div>';
+      throw new Error('Missing Mapbox access token');
+    }
+
+    mapboxgl.accessToken = accessToken;
+
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [-91.874, 42.76],
+      zoom: 12,
+    });
+
+    const draw = new MapboxDraw({
+      displayControlsDefault: false,
+      controls: {
+        point: true,
+        line_string: true,
+        polygon: true,
+        trash: true,
+      },
+      userProperties: true,
+    });
+
+    map.addControl(draw);
+    window.draw = draw;
+    window.map = map;
+
+    // Update UI on mode/feature changes
+    map.on('draw.modechange', (e) => {
+      document.getElementById('current-mode').textContent = e.mode;
+      document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
+    });
+
+    map.on('draw.create', updateCount);
+    map.on('draw.delete', updateCount);
+    map.on('draw.update', updateCount);
+    map.on('draw.render', updateCount);
+
+    function updateCount() {
+      const all = draw.getAll();
+      document.getElementById('feature-count').textContent = all.features.length;
+    }
+
+    // 'metric' -> km / m / km²; 'standard' -> feet / miles / acres + ft².
+    let unit = localStorage.getItem('draw_unit') || 'metric';
+    let lastMode = 'simple_select';
+
+    window.setUnit = function(next) {
+      unit = next;
+      localStorage.setItem('draw_unit', unit);
+      document.getElementById('current-unit').textContent =
+        unit === 'metric' ? 'metric (km²)' : 'standard (ac / ft²)';
+      document.getElementById('unit-metric').classList.toggle('active', unit === 'metric');
+      document.getElementById('unit-standard').classList.toggle('active', unit === 'standard');
+      // Re-enter the current drawing mode so new measurements use the new unit.
+      if (lastMode !== 'simple_select') changeMode(lastMode);
+    };
+
+    window.changeMode = function(mode) {
+      try {
+        const opts = {};
+        if (mode === 'draw_polygon' || mode === 'draw_line_string' || mode === 'draw_rectangle' || mode === 'draw_circle') {
+          opts.measurement = true;
+          opts.unit = unit;
+        }
+        lastMode = mode;
+        draw.changeMode(mode, opts);
+        document.getElementById('current-mode').textContent = mode;
+      } catch (e) {
+        console.error('Mode change error:', e);
+      }
+    };
+
+    setUnit(unit);
+
+    window.testRotate = function() {
+      const selected = draw.getSelectedIds();
+      if (selected.length > 0) {
+        const feature = draw.get(selected[0]);
+        draw.changeMode('draw_rotate', { selectedFeature: feature });
+      } else {
+        alert('Select a feature first, then click Rotate');
+      }
+    };
+
+    window.deleteAll = function() {
+      draw.deleteAll();
+      updateCount();
+    };
+
+    window.getAll = function() {
+      console.log('All features:', JSON.stringify(draw.getAll(), null, 2));
+    };
+  </script>
+</body>
+</html>

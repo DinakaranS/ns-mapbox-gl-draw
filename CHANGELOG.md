@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased
+
+### Synced with upstream mapbox-gl-draw 1.5.1
+
+* Midpoints are now calculated in Web Mercator and converted back to WGS84, so they land on the line as actually rendered instead of on the naive lat/lng average (mapbox/mapbox-gl-draw#1331). Adds a `@turf/projection` dependency.
+* Key handling now prefers `KeyboardEvent.key` over the deprecated `keyCode`, via new `CommonSelectors` helpers: `isBackspaceKey`, `isDeleteKey`, `isDigit1Key`, `isDigit2Key`, `isDigit3Key`, `isDigitKey`. `isEscapeKey`/`isEnterKey` accept either. Legacy `keyCode` remains supported.
+
+(The 1.5.1 `direct_select` drag-pan fix and the control-button ordering/keybinding titles were already present in this fork.)
+
+### Fixed
+
+* **Imperial area now reports square feet again.** The TypeScript rewrite reduced the standard-system area to acres only (`value / 4046.8564224` with unit `ac`); the original implementation showed both, as `1.23 ac (53,578.80 ft²)`. Restored that combined format — including the non-breaking spaces — for polygons, rectangles and circle radius labels alike.
+* Fixed the dev server root so the example's stylesheet resolves: `dist/` sits outside `example/`, so `yarn start` served the page but silently fell back to HTML for `../dist/mapbox-gl-draw.css`, leaving the control buttons without icons. `yarn start` now runs from the project root and opens `/example/index.html`.
+* The example accepts a Mapbox token via `?access_token=…` and remembers it in `localStorage`, instead of requiring an edit to `index.html`.
+* Restored `dist/mapbox-gl-draw.css` and `dist/svg/*`, which the Vite migration had dropped while `package.json` still advertised them — control buttons shipped with no icons. They are now tracked in `src/` and copied into `dist/` at build time.
+* Restored bundling of type declarations into a single `dist/index.d.ts`; the upgrade to `vite-plugin-dts` v5 had silently split them into a `dist/src/**` tree (the option is now `bundleTypes`, and `@microsoft/api-extractor` must be installed explicitly).
+* Declared `@turf/destination`, which was imported by `draw_rotate` but resolved only as a transitive dependency.
+* Moved packages imported at runtime (`@turf/*`, `numeral`) out of `devDependencies` into `dependencies`, and dropped the unused `@turf/circle`, `@turf/bbox-clip` and `eslint-plugin-prettier`.
+* Declared `mapbox-gl` as an optional peer dependency — it is externalised by the build, so consumers must provide it.
+* Fixed three lint errors (`no-useless-assignment` in `render.ts` and `draw_rotate.ts`, `no-this-alias` in `render.ts`).
+
+### Changed
+
+* Custom modes are now addressable via the public constants: `DRAW_RECTANGLE`, `DRAW_CIRCLE`, `DRAW_TEXT`, `DRAW_LINE_ARROW`, `DRAW_ROTATE`, `DRAW_MARKER`.
+* Exported the fork's `createDistance` and `createAdditionalVertex` helpers from `MapboxDraw.lib`.
+* `yarn test` now runs both the runtime and all-modes suites (209 assertions).
+* Dependencies updated: Vite 6 → 8 (Rolldown; minifier switched to Oxc), ESLint 9 → 10, typescript-eslint 8.68, Prettier 3.9, nanoid 5 → 6, Turf 7.4, mapbox-gl 3.29.
+* Minimum Node is now `^20.19.0 || >=22.12.0`, as required by Vite 8 and ESLint 10.
+
+> **Note:** TypeScript stays on 6.0.x. TypeScript 7 drops the JavaScript Compiler API, which both `typescript-eslint` (peer range `<6.1.0`) and the declaration bundler still require.
+
 ## 1.5.0
 
 * Library modernization by @stepankuzmin in https://github.com/mapbox/mapbox-gl-draw/pull/1242:
